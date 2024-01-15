@@ -1,19 +1,18 @@
 # See README.md for usage information
 class nvm (
-  $user,
-  $home                = undef,
-  $nvm_dir             = undef,
-  $profile_path        = undef,
-  $version             = $nvm::params::version,
-  $manage_user         = $nvm::params::manage_user,
-  $manage_dependencies = $nvm::params::manage_dependencies,
-  $manage_profile      = $nvm::params::manage_profile,
-  $nvm_repo            = $nvm::params::nvm_repo,
-  $refetch             = $nvm::params::refetch,
-  $install_node        = $nvm::params::install_node,
-  $node_instances      = $nvm::params::node_instances,
+  String $user,
+  Optional[Stdlib::AbsolutePath] $home            = undef,
+  Optional[Stdlib::AbsolutePath] $nvm_dir         = undef,
+  Optional[Stdlib::AbsolutePath] $profile_path    = undef,
+  String $version                                 = $nvm::params::version,
+  Boolean $manage_user                            = $nvm::params::manage_user,
+  Boolean $manage_dependencies                    = $nvm::params::manage_dependencies,
+  Boolean $manage_profile                         = $nvm::params::manage_profile,
+  String $nvm_repo                                = $nvm::params::nvm_repo,
+  Boolean $refetch                                = $nvm::params::refetch,
+  Optional[String] $install_node                  = $nvm::params::install_node,
+  Optional[Hash[String[1], Hash]] $node_instances = undef,
 ) inherits ::nvm::params {
-
   if $home == undef and $user == 'root' {
     $final_home = '/root'
   }
@@ -38,29 +37,8 @@ class nvm (
     $final_profile_path = $profile_path
   }
 
-  validate_string($user)
-  validate_string($final_home)
-  validate_string($final_nvm_dir)
-  validate_string($final_profile_path)
-  validate_string($version)
-  validate_bool($manage_user)
-  validate_bool($manage_dependencies)
-  validate_bool($manage_profile)
-  if $install_node {
-    validate_string($install_node)
-  }
-  validate_hash($node_instances)
-
   Exec {
     path => '/bin:/sbin:/usr/bin:/usr/sbin',
-  }
-
-  if $manage_dependencies {
-    $nvm_install_require = Package['git','wget','make']
-    ensure_packages(['git', 'wget', 'make'])
-  }
-  else {
-    $nvm_install_require = undef
   }
 
   if $manage_user {
@@ -78,13 +56,13 @@ class nvm (
     version      => $version,
     nvm_dir      => $final_nvm_dir,
     nvm_repo     => $nvm_repo,
-    dependencies => $nvm_install_require,
+    dependencies => $manage_dependencies,
     refetch      => $refetch,
   }
 
   if $manage_profile {
     file { "ensure ${final_profile_path}":
-      ensure => 'present',
+      ensure => file,
       path   => $final_profile_path,
       owner  => $user,
     } ->
@@ -111,9 +89,10 @@ class nvm (
     $final_node_instances = $node_instances
   }
 
-  create_resources(::nvm::node::install, $final_node_instances, {
-    user        => $user,
-    nvm_dir     => $final_nvm_dir,
-  })
-
+  if $final_node_instances {
+    create_resources(::nvm::node::install, $final_node_instances, {
+      user    => $user,
+      nvm_dir => $final_nvm_dir,
+    })
+  }
 }

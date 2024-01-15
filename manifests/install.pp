@@ -5,16 +5,24 @@ class nvm::install (
   $version,
   $nvm_dir,
   $nvm_repo,
-  $dependencies,
-  $refetch,
+  Boolean $dependencies,
+  Boolean $refetch,
 ) {
+
+  if $dependencies {
+    $nvm_install_require = Package['git', 'wget', 'make']
+    ensure_packages(['git', 'wget', 'make'])
+  }
+  else {
+    $nvm_install_require = undef
+  }
 
   exec { "git clone ${nvm_repo} ${nvm_dir}":
     command => "git clone ${nvm_repo} ${nvm_dir}",
     cwd     => $home,
     user    => $user,
     unless  => "/usr/bin/test -d ${nvm_dir}/.git",
-    require => $dependencies,
+    require => $nvm_install_require,
     notify  => Exec["git checkout ${nvm_repo} ${version}"],
   }
 
@@ -34,5 +42,4 @@ class nvm::install (
     user        => $user,
     refreshonly => true,
   }
-
 }
